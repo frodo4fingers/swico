@@ -101,19 +101,19 @@ def editThemerc(path, fg, bg, verbose):
             for line in current_file:
 
                 if item[0] in line:
-                    new_file.writelines(item[0] + " " + fg + "\n")
+                    new_file.writelines(item[0] + " " + bg + "\n")
 
                 elif item[1] in line:
-                    new_file.writelines(item[1] + " " + fg + "\n")
+                    new_file.writelines(item[1] + " " + bg + "\n")
 
                 elif item[2] in line:
-                    new_file.writelines(item[2] + " " + fg + "\n")
+                    new_file.writelines(item[2] + " " + bg + "\n")
 
                 elif item[3] in line:
-                    new_file.writelines(item[3] + " " + fg + "\n")
+                    new_file.writelines(item[3] + " " + bg + "\n")
 
                 elif item[4] in line:
-                    new_file.writelines(item[4] + " " + bg + "\n")
+                    new_file.writelines(item[4] + " " + fg + "\n")
 
                 else:
                     new_file.writelines(line)
@@ -137,10 +137,36 @@ def editDmenu(path, fg, bg, verbose):
                 if "dmenu_run" in line:
                     # rewrite the whole line is much easier
                     # " "*8 is the whitespace in order to maintain the xml structure
-                    new_file.writelines(" "*8 + "<command>dmenu_run -p 'WHAT' -sb '%s' -nb '%s' -nf '%s'</command>\n" % (fg, bg, fg))
+                    new_file.writelines(" "*8 + "<command>dmenu_run -p 'WHAT' -sb '%s' -nb '%s' -nf '%s'</command>\n" % (bg, fg, bg))
 
                     if verbose:
                         print("changed colors in dmenu")
+
+                else:
+                    new_file.writelines(line)
+
+            new_file.close()
+        current_file.close()
+    os.rename(path + '_tmp', path)
+
+
+def editGTKrc(path, fg, bg, verbose):
+    """
+        edit selected color in gtk source
+    """
+    # back this up before something goes wrong
+    backUpStuff(path, verbose)
+
+    with open(path, "r") as current_file:
+        with open(path + "_tmp", "w") as new_file:
+
+            for line in current_file:
+                if "# Background, base." in line:
+
+                    new_file.writelines('gtk_color_scheme = "bg_color:#d4d4d4\\nselected_bg_color:%s\\nbase_color:#F7F7F7" # Background, base.\n' % (bg))
+
+                    if verbose:
+                        print("changed colors in gtkrc")
 
                 else:
                     new_file.writelines(line)
@@ -160,21 +186,25 @@ def main(argv):
     parser = argparse.ArgumentParser(description="this script is able to change the colors of ObMenu, DMenu and pcmanfm (at least at my laptop) out of the obmenu itself", epilog="running on antergos/arch linux with openbox", prog="swico")
 
     parser.add_argument("-b",
-    dest="background",
-    help="background color",
-    # change here for default background color
-    default="#f7f7f7")
-
-    parser.add_argument("-f",
-        dest="foreground",
+        dest="background",
         help="selected item color",
         # change here for default selected color
         default="#D54836")
+
+    parser.add_argument("-f",
+        dest="foreground",
+        help="foreground color",
+        # change here for default foreground color
+        default="#f7f7f7")
 
     parser.add_argument("-i",
         dest="image",
         help="take selescted color from wallpaper",
         action="store_true")
+
+    parser.add_argument("--remove",
+        dest="remove",
+        help="remove all backed up files")
 
     parser.add_argument("--path_n",
         dest="path_n",
@@ -191,11 +221,6 @@ def main(argv):
         help="path to .themes to get stuff started",
         default="/home/frodo/.themes/")
 
-    parser.add_argument("-R",
-        dest="rewind",
-        help="restore to last file",
-        action="store_true")
-
     parser.add_argument("-V",
         dest="verbose",
         help="console output",
@@ -207,8 +232,8 @@ def main(argv):
     if args.image:
         wallpaper = getCurrentWallpaper(args.path_n, args.verbose)
 
-        fg = getColor(wallpaper, args.verbose)
-        bg = args.background
+        fg = args.foreground
+        bg = getColor(wallpaper, args.verbose)
 
     else:
         fg = args.foreground
@@ -218,6 +243,7 @@ def main(argv):
 
     editThemerc(args.path_t + theme + "/openbox-3/themerc", fg, bg, args.verbose)
     editDmenu(args.path_r, fg, bg, args.verbose)
+    editGTKrc(args.path_t + theme + "/gtk-2.0/gtkrc", fg, bg, args.verbose)
 
     os.system("openbox --reconfigure")
 
