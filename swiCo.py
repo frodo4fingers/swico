@@ -4,8 +4,12 @@
 import sys, re, os, shutil
 import time, datetime
 from PIL import Image
-from dominant_colour import most_frequent_colour as mfc
+# from dominant_colour import most_frequent_colour as mfc
 from dominant_colour import average_colour as ac
+
+
+def rgb2hex(rgb):
+    return "#%02x%02x%02x" % rgb
 
 
 def backUpStuff(stuff, verbose):
@@ -74,10 +78,6 @@ def getColor(wallpaper, verbose):
 
     # return rgb2hex(mfc(Image.open(wallpaper)))
     return rgb2hex(ac(Image.open(wallpaper)))
-
-
-def rgb2hex(rgb):
-    return "#%02x%02x%02x" % rgb
 
 
 def editThemerc(path, fg, bg, verbose):
@@ -176,6 +176,26 @@ def editGTKrc(path, fg, bg, verbose):
     os.rename(path + '_tmp', path)
 
 
+def removeBackUps(pathThemerc, pathDMenu, pathGTKrc, verbose):
+    """
+        remove all the backed up files that were produced during the changes of
+        wallpaper or color
+    """
+
+    for item in (pathThemerc, pathDMenu, pathGTKrc):
+        path = item
+        path = path.split("/")[:-1]
+        path = "/".join(path)
+        path = path + "/"
+
+        filelist = [f for f in os.listdir(path) if ".bak_" in f]
+        for f in filelist:
+            os.remove(path + f)
+
+        if verbose:
+            print("deleted %i items in %s" % (len(filelist), path))
+
+
 def main(argv):
     """
         here to handle stuff
@@ -204,7 +224,8 @@ def main(argv):
 
     parser.add_argument("--remove",
         dest="remove",
-        help="remove all backed up files")
+        help="remove all backed up files",
+        action="store_true")
 
     parser.add_argument("--path_n",
         dest="path_n",
@@ -221,13 +242,12 @@ def main(argv):
         help="path to .themes to get stuff started",
         default="/home/frodo/.themes/")
 
-    parser.add_argument("-V",
+    parser.add_argument("-v",
         dest="verbose",
         help="console output",
         action="store_true")
 
     args = parser.parse_args()
-
 
     if args.image:
         wallpaper = getCurrentWallpaper(args.path_n, args.verbose)
@@ -241,11 +261,17 @@ def main(argv):
 
     theme = getActiveTheme(args.path_r, args.verbose)
 
+    if args.remove:
+        removeBackUps(args.path_t + theme + "/openbox-3/themerc", args.path_r, args.path_t + theme + "/gtk-2.0/gtkrc", args.verbose)
+
+        sys.exit()
+
     editThemerc(args.path_t + theme + "/openbox-3/themerc", fg, bg, args.verbose)
     editDmenu(args.path_r, fg, bg, args.verbose)
-    editGTKrc(args.path_t + theme + "/gtk-2.0/gtkrc", fg, bg, args.verbose)
+    # editGTKrc(args.path_t + theme + "/gtk-2.0/gtkrc", fg, bg, args.verbose)
 
     os.system("openbox --reconfigure")
+
 
 
 if __name__ == "__main__":
