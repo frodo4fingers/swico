@@ -3,6 +3,7 @@
 
 import sys, re, os, shutil
 import time, datetime
+import numpy as np
 from PIL import Image
 # from dominant_colour import most_frequent_colour as mfc
 from dominant_colour import average_colour as ac
@@ -10,6 +11,14 @@ from dominant_colour import average_colour as ac
 
 def rgb2hex(rgb):
     return "#%02x%02x%02x" % rgb
+
+
+def hex2rgb(h):
+    h = h.lstrip('#')
+
+    rgb = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+    # rgb = (rgb[0], rgb[1], rgb[2], 255)
+    return rgb
 
 
 def backUpStuff(stuff, verbose):
@@ -176,24 +185,84 @@ def editGTKrc(path, fg, bg, verbose):
     os.rename(path + '_tmp', path)
 
 
-def removeBackUps(pathThemerc, pathDMenu, pathGTKrc, verbose):
+def editAwesomeTheme(path_a, path_i, bg, verbose):
+    """
+        edit theme.lua in specified directory
+    """
+    # back this up before something goes wrong
+    backUpStuff(path_a, verbose)
+
+    with open(path_a, "r") as current_file:
+        with open(path_a + "_tmp", "w") as new_file:
+
+            for line in current_file:
+                if "theme.bg_focus" in line:
+                    new_file.writelines('theme.bg_focus      = "%s"\n' % (bg))
+                elif "theme.border_focus" in line:
+                    new_file.writelines('theme.border_focus  = "%s"\n' % (bg))
+
+                    if verbose:
+                        print("changed colors in theme.lua")
+
+                else:
+                    new_file.writelines(line)
+
+            new_file.close()
+        current_file.close()
+    os.rename(path_a + '_tmp', path_a)
+
+    switchIconColor(path_i, bg)
+
+
+def switchIconColor(iconPath, bg):
+    """
+        manipulate the color of the awesome
+        logo to match the wallpaper
+        -----------------------------------
+        found and edited from:
+        http://stackoverflow.com/questions/3752476/python-pil-replace-a-single-rgba-color
+    """
+
+    for subdir, dirs, files in os.walk(iconPath):
+        for file in files:
+            # icon = code + '.png'
+            if file.endswith('.png'):
+                img = Image.open(subdir + file).convert('RGBA')
+                data = np.array(img)
+                # unpack for readability
+                red, green, blue, alpha = data.T
+                # the red[0][0] etc are the first values of the image to be replaced
+                # which means that this catches the color of the awesome a
+                toReplace = (red == red[0][0]) & (green == green[0][0]) & (blue == blue[0][0])
+                # Transpose back needed
+                data[..., :-1][toReplace.T] = hex2rgb(bg)
+
+                img2 = Image.fromarray(data)
+                img2.save(subdir + file)
+
+
+def removeBackUps(pathThemerc, pathDMenu, pathGTKrc, pathAwesome, verbose):
     """
         remove all the backed up files that were produced during the changes of
         wallpaper or color
     """
 
-    for item in (pathThemerc, pathDMenu, pathGTKrc):
-        path = item
-        path = path.split("/")[:-1]
-        path = "/".join(path)
-        path = path + "/"
+    for item in (pathThemerc, pathDMenu, pathGTKrc, pathAwesome):
+        try:
+            path = item
+            path = path.split("/")[:-1]
+            path = "/".join(path)
+            path = path + "/"
 
-        filelist = [f for f in os.listdir(path) if ".bak_" in f]
-        for f in filelist:
-            os.remove(path + f)
+            filelist = [f for f in os.listdir(path) if ".bak_" in f]
+            for f in filelist:
+                os.remove(path + f)
 
-        if verbose:
-            print("deleted %i items in %s" % (len(filelist), path))
+            if verbose:
+                print("deleted %i items in %s" % (len(filelist), path))
+        except IOError as e:
+            errno, strerror = e.args
+            print("I/O error({0}): {1}".format(errno, strerror))
 
 
 def main(argv):
@@ -242,6 +311,16 @@ def main(argv):
         help="path to .themes to get stuff started",
         default="/home/frodo/.themes/")
 
+    parser.add_argument("--path_a",
+        dest="path_a",
+        help="path to chosen awesome theme.lua",
+        default="/home/frodo/.config/awesome/themes/default/theme.lua")
+
+    parser.add_argument("--path_ai",
+        dest="path_ai",
+        help="path to awesomes icons to switch the color there too",
+        default="/home/frodo/.config/awesome/icons/")
+
     parser.add_argument("-v",
         dest="verbose",
         help="console output",
@@ -262,17 +341,17 @@ def main(argv):
     theme = getActiveTheme(args.path_r, args.verbose)
 
     if args.remove:
-        removeBackUps(args.path_t + theme + "/openbox-3/themerc", args.path_r, args.path_t + theme + "/gtk-2.0/gtkrc", args.verbose)
+        removeBackUps(args.path_t + theme + "/openbox-3/themerc", args.path_r, args.path_t + theme + "/gtk-2.0/gtkrc", args.path_a, args.verbose)
 
         sys.exit()
 
     editThemerc(args.path_t + theme + "/openbox-3/themerc", fg, bg, args.verbose)
     editDmenu(args.path_r, fg, bg, args.verbose)
-    # editGTKrc(args.path_t + theme + "/gtk-2.0/gtkrc", fg, bg, args.verbose)
+    editGTKrc(args.path_t + theme + "/gtk-2.0/gtkrc", fg, bg, args.verbose)
+    editAwesomeTheme(args.path_a, args.path_ai, bg, args.verbose)
 
     os.system("openbox --reconfigure")
-
-
+    os.system("echo 'awesome.restart()' | awesome-client")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
