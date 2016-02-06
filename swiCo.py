@@ -265,6 +265,16 @@ def removeBackUps(pathThemerc, pathDMenu, pathGTKrc, pathAwesome, verbose):
             print("I/O error({0}): {1}".format(errno, strerror))
 
 
+def getWindowManager():
+    """
+        trying to retreive which wm is used so a few functions wont be called and
+        no errors what so ever occur
+    """
+    wm = os.popen('pgrep -l "openbox|awesome"').read()
+
+    return wm.split(' ')[1]
+
+
 def main(argv):
     """
         here to handle stuff
@@ -328,6 +338,7 @@ def main(argv):
 
     args = parser.parse_args()
 
+
     if args.image:
         wallpaper = getCurrentWallpaper(args.path_n, args.verbose)
 
@@ -345,13 +356,20 @@ def main(argv):
 
         sys.exit()
 
-    editThemerc(args.path_t + theme + "/openbox-3/themerc", fg, bg, args.verbose)
-    editDmenu(args.path_r, fg, bg, args.verbose)
-    editGTKrc(args.path_t + theme + "/gtk-2.0/gtkrc", fg, bg, args.verbose)
-    editAwesomeTheme(args.path_a, args.path_ai, bg, args.verbose)
+    wm = getWindowManager()
 
-    os.system("openbox --reconfigure")
-    os.system("echo 'awesome.restart()' | awesome-client")
+    if wm == 'openbox':
+        editThemerc(args.path_t + theme + "/openbox-3/themerc", fg, bg, args.verbose)
+        editDmenu(args.path_r, fg, bg, args.verbose)
+        # editGTKrc(args.path_t + theme + "/gtk-2.0/gtkrc", fg, bg, args.verbose)
+        os.system("openbox --reconfigure")
+        
+    elif wm == 'awesome':
+        editGTKrc(args.path_t + theme + "/gtk-2.0/gtkrc", fg, bg, args.verbose)
+        editAwesomeTheme(args.path_a, args.path_ai, bg, args.verbose)
+        # TODO: find a better solution for this:
+        os.system("echo 'awesome.restart()' | awesome-client")
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -1,6 +1,6 @@
 # swico.py
 
-**switch** the **color** of Obmenu and Dmenu and your gtkrc out of Obmenu itself.
+**switch** the **color** of Obmenu and Dmenu and your gtkrc from commandline or bind it in your ObMenu or awful.menu
 
 ## what you need to do
 + download this script and make it executable
@@ -34,7 +34,7 @@ swico.py --remove
 ```python
 swico.py -v
 ```
-+ **each file which will be manipulated will be backed up!**
++ **each file manipulated will be backed up!**
 
 + of course you have to set the path variables. change it in the code (better) or give it as command each time
   - **--path_n** needs to lead to the bg-saved.cfg in your nitrogen folder to get the current wallpaper
@@ -54,6 +54,8 @@ this works on my machine with **antergos/arch-linux** and **openbox**/**awesome*
 ## TODO
 - function to set the layout back
 
+## DONE
+- awesome being now restarted after file changes
+
 ## bugs or something like that
 - if the gtkrc is edited it takes some time for pcmanfm to recognize the change (i think). nevertheless it works. it will eventually after reboot. be careful.. can be ugly.. maybe comment the line 350 so there are no changes
-- i have currently no working solution for awesome being automatically restarted...
