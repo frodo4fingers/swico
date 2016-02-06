@@ -223,22 +223,20 @@ def switchIconColor(iconPath, bg):
         http://stackoverflow.com/questions/3752476/python-pil-replace-a-single-rgba-color
     """
 
-    for subdir, dirs, files in os.walk(iconPath):
-        for file in files:
-            # icon = code + '.png'
-            if file.endswith('.png'):
-                img = Image.open(subdir + file).convert('RGBA')
-                data = np.array(img)
-                # unpack for readability
-                red, green, blue, alpha = data.T
-                # the red[0][0] etc are the first values of the image to be replaced
-                # which means that this catches the color of the awesome a
-                toReplace = (red == red[0][0]) & (green == green[0][0]) & (blue == blue[0][0])
-                # Transpose back needed
-                data[..., :-1][toReplace.T] = hex2rgb(bg)
+    for file in os.listdir(iconPath):
+        if file.endswith('.png'):
+            img = Image.open(iconPath + file).convert('RGBA')
+            data = np.array(img)
+            # unpack for readability
+            red, green, blue, alpha = data.T
+            # the red[0][0] etc are the first values of the image to be replaced
+            # which means that this catches the color of the awesome a
+            toReplace = (red == red[0][0]) & (green == green[0][0]) & (blue == blue[0][0])
+            # Transpose back needed
+            data[..., :-1][toReplace.T] = hex2rgb(bg)
 
-                img2 = Image.fromarray(data)
-                img2.save(subdir + file)
+            img2 = Image.fromarray(data)
+            img2.save(iconPath + file)
 
 
 def removeBackUps(pathThemerc, pathDMenu, pathGTKrc, pathAwesome, verbose):
@@ -271,8 +269,7 @@ def getWindowManager():
         no errors what so ever occur
     """
     wm = os.popen('pgrep -l "openbox|awesome"').read()
-
-    return wm.split(' ')[1]
+    return wm.split(' ')[1].replace('\n', '')
 
 
 def main(argv):
@@ -357,14 +354,19 @@ def main(argv):
         sys.exit()
 
     wm = getWindowManager()
+    print(wm)
 
     if wm == 'openbox':
+        if args.verbose:
+            print('found %s as window manager...' % (wm))
         editThemerc(args.path_t + theme + "/openbox-3/themerc", fg, bg, args.verbose)
         editDmenu(args.path_r, fg, bg, args.verbose)
         # editGTKrc(args.path_t + theme + "/gtk-2.0/gtkrc", fg, bg, args.verbose)
         os.system("openbox --reconfigure")
-        
+
     elif wm == 'awesome':
+        if args.verbose:
+            print('found %s as window manager...' % (wm))
         editGTKrc(args.path_t + theme + "/gtk-2.0/gtkrc", fg, bg, args.verbose)
         editAwesomeTheme(args.path_a, args.path_ai, bg, args.verbose)
         # TODO: find a better solution for this:
